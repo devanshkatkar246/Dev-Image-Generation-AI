@@ -64,6 +64,7 @@ export default function App() {
     createNewChat,
     addMessage,
     updateMessage,
+    deleteChat,
   } = useChatHistory();
 
   const scrollToBottom = () => {
@@ -366,6 +367,7 @@ export default function App() {
             createNewChat();
             setIsSidebarOpen(false);
           }} 
+          onDeleteChat={deleteChat}
         />
       </div>
       

@@ -1,15 +1,16 @@
 import React from 'react';
 import { ChatSession } from '../types/chat';
-import { MessageSquare, Plus, Sparkles } from 'lucide-react';
+import { MessageSquare, Plus, Sparkles, Trash2 } from 'lucide-react';
 
 interface SidebarProps {
   chats: ChatSession[];
   currentChatId: string | null;
   onSelectChat: (id: string) => void;
   onNewChat: () => void;
+  onDeleteChat: (id: string) => void;
 }
 
-export default function Sidebar({ chats, currentChatId, onSelectChat, onNewChat }: SidebarProps) {
+export default function Sidebar({ chats, currentChatId, onSelectChat, onNewChat, onDeleteChat }: SidebarProps) {
   return (
     <div className="w-64 bg-zinc-950 border-r border-zinc-800/50 flex flex-col h-full shrink-0">
       <div className="p-4 border-b border-zinc-800/50">
@@ -34,20 +35,36 @@ export default function Sidebar({ chats, currentChatId, onSelectChat, onNewChat 
           </div>
         ) : (
           chats.map(chat => (
-            <button
+            <div
               key={chat.id}
-              onClick={() => onSelectChat(chat.id)}
-              className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-colors ${
+              className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl text-left transition-colors group ${
                 currentChatId === chat.id 
                   ? 'bg-zinc-800/80 text-amber-400' 
                   : 'text-zinc-400 hover:bg-zinc-900/80 hover:text-zinc-200'
               }`}
             >
-              <MessageSquare className={`w-4 h-4 shrink-0 ${currentChatId === chat.id ? 'text-amber-500' : 'opacity-70'}`} />
-              <div className="truncate text-sm font-medium">
-                {chat.title}
-              </div>
-            </button>
+              <button
+                onClick={() => onSelectChat(chat.id)}
+                className="flex items-center gap-3 flex-1 min-w-0"
+              >
+                <MessageSquare className={`w-4 h-4 shrink-0 ${currentChatId === chat.id ? 'text-amber-500' : 'opacity-70'}`} />
+                <div className="truncate text-sm font-medium">
+                  {chat.title}
+                </div>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteChat(chat.id);
+                }}
+                className={`p-1.5 rounded-md text-zinc-500 hover:text-red-400 hover:bg-zinc-800 transition-colors opacity-0 group-hover:opacity-100 ${
+                  currentChatId === chat.id ? 'opacity-100' : ''
+                }`}
+                title="Delete chat"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
           ))
         )}
       </div>

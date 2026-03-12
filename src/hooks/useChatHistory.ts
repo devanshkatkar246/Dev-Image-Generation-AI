@@ -81,6 +81,22 @@ export function useChatHistory() {
     }));
   };
 
+  const deleteChat = (chatId: string) => {
+    setChats(prev => {
+      const newChats = prev.filter(c => c.id !== chatId);
+      if (newChats.length === 0) {
+        localStorage.removeItem(STORAGE_KEY);
+      } else {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ chats: newChats }));
+      }
+      
+      if (currentChatId === chatId) {
+        setCurrentChatId(newChats.length > 0 ? newChats[0].id : null);
+      }
+      return newChats;
+    });
+  };
+
   const currentChat = chats.find(c => c.id === currentChatId) || null;
 
   return {
@@ -92,5 +108,6 @@ export function useChatHistory() {
     createNewChat,
     addMessage,
     updateMessage,
+    deleteChat,
   };
 }
