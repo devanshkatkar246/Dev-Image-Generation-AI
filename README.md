@@ -1,67 +1,73 @@
-# AI Image Generator
+# Dev Image Generation AI
 
-A modern, responsive web application that generates high-quality images from text prompts using Google's Gemini AI.
+A premium, high-performance image generation platform that leverages state-of-the-art AI models to transform text prompts into stunning visual content. Built with a modern tech stack focused on speed, reliability, and user experience.
 
-## Features
+## ✨ Features
 
-- **Text-to-Image Generation**: Uses the `gemini-2.5-flash-image` model to create unique images based on user descriptions.
-- **Modern UI/UX**: A sleek, dark-themed interface built with Tailwind CSS, featuring smooth transitions and hover effects.
-- **Real-time Feedback**: Includes loading states, spinners, and error handling to keep the user informed during the generation process.
-- **Download Capability**: Easily download the generated images directly to your device with a single click.
-- **Responsive Design**: Works seamlessly across desktop, tablet, and mobile devices.
+- **Advanced AI Generation**: Powered by **Flux 1.1 Pro** via Replicate for industry-leading image quality and prompt adherence.
+- **Optimized Backend**: Custom Node.js/Express server acting as a secure proxy to handle API requests and rate limiting.
+- **Premium UI/UX**:
+  - Sleek dark-mode aesthetic with glassmorphism.
+  - Smooth micro-animations using Framer Motion (Motion).
+  - Fully responsive design for all screen sizes.
+- **Smart Prompting**: Automatically appends quality-enhancing constraints to ensure high-fidelity outputs.
+- **Instant Preview & Download**: Real-time generation feedback with one-click image downloads.
+- **Usage Management**: Built-in rate limiting to manage API usage effectively.
 
-## Tech Stack
+## 🛠️ Tech Stack
 
-- **Frontend Framework**: React 19
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS v4
-- **AI Integration**: `@google/genai` SDK
+- **Frontend**: React 19, Vite, Tailwind CSS v4
+- **Backend**: Node.js, Express, TSX
+- **AI Integration**: Replicate API (Flux 1.1 Pro)
+- **Animations**: Motion (Framer Motion)
 - **Icons**: Lucide React
 
-## How It Works
-
-1. **User Input**: The user enters a descriptive prompt into the text area.
-2. **API Request**: When the "Generate Image" button is clicked, the app initializes the `GoogleGenAI` client using the provided `GEMINI_API_KEY`.
-3. **Model Execution**: A request is sent to the `gemini-2.5-flash-image` model with the user's prompt.
-4. **Response Parsing**: The model returns the generated image as a base64-encoded string.
-5. **Rendering**: The base64 string is converted into a data URI (`data:image/png;base64,...`) and displayed in the UI.
-6. **Downloading**: The user can click the download button, which programmatically creates an anchor tag with the data URI and triggers a download.
-
-## Setup & Installation
+## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js (v18 or higher recommended)
-- A Google Gemini API Key
 
-### Environment Variables
-Create a `.env` file in the root directory (you can copy `.env.example`) and add your Gemini API key:
+- Node.js (v18 or higher)
+- A Replicate API Token
 
-```env
-GEMINI_API_KEY="your_actual_api_key_here"
+### 1. Installation
+
+Clone the repository and install dependencies:
+
+```bash
+npm install
 ```
 
-### Running Locally
+### 2. Configuration
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+Create a `.env` file in the root directory (refer to `.env.example`) and add your Replicate API token:
 
-2. Start the development server:
-   ```bash
-   npm run dev
-   ```
+```env
+REPLICATE_API_TOKEN=your_replicate_token_here
+```
 
-3. Open your browser and navigate to the local URL provided by Vite (usually `http://localhost:3000`).
+### 3. Development
 
-## Project Structure
+Start the integrated development server (runs both the backend and frontend):
 
-- `/src/App.tsx`: The main React component containing the UI and the generation logic.
-- `/src/main.tsx`: The React entry point.
-- `/src/index.css`: Global styles and Tailwind CSS imports.
-- `/metadata.json`: Application metadata (name, description, permissions).
-- `vite.config.ts`: Vite configuration, including Tailwind setup and environment variable injection.
+```bash
+npm run dev
+```
 
-## Perchance Version
+The application will be available at `http://localhost:3000`.
 
-If you are looking to run this inside the **Perchance** ecosystem using the `text-to-image-plugin`, a separate Perchance-compatible code snippet was provided in the previous interaction. That version uses Perchance's specific list syntax and HTML/CSS structure instead of React.
+## 📂 Project Structure
+
+- `server.ts`: The core Express server handling API routing, rate limiting, and Vite middleware.
+- `src/App.tsx`: Main React application entry point and UI logic.
+- `src/api/generateImage.ts`: Client-side service for communicating with the backend.
+- `src/components/`: Reusable React components (ChatMessageItem, etc.).
+- `public/`: Static assets.
+
+## 🛡️ Architecture & Security
+
+- **Proxy Layer**: The frontend never communicates directly with Replicate. All requests are routed through our backend to keep API keys secure and enforce usage limits.
+- **Environment Safety**: Sensitive credentials are managed via environment variables and are excluded from version control.
+
+## 📄 License
+
+MIT
