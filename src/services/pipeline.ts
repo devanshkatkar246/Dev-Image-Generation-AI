@@ -1,5 +1,3 @@
-import { GoogleGenAI } from '@google/genai';
-
 const KEYWORDS = [
   'wedding', 'birthday', 'decoration', 'stage decoration', 'photobooth',
   'balloon decoration', 'haldi', 'mehndi', 'engagement', 'anniversary',
@@ -17,47 +15,7 @@ export function keywordCheck(prompt: string): boolean {
 }
 
 /**
- * Layer 2: AI Prompt Validator
- * Uses Gemini 3 Flash to validate if the prompt is related to event decorations.
- */
-export async function aiValidatePrompt(prompt: string, ai: GoogleGenAI): Promise<string> {
-  const systemPrompt = `You are a prompt validator for an event decoration AI generator used by a decoration management company.
-
-Determine whether the following prompt is related to:
-event decoration, wedding decor, party decor, stage decoration, photobooth setup, floral decoration, balloon decoration, or event styling.
-
-Respond with ONLY one of these labels:
-WEDDING
-BIRTHDAY
-HALDI
-MEHNDI
-BABY_SHOWER
-ENGAGEMENT
-ANNIVERSARY
-CORPORATE_EVENT
-DECORATION
-INVALID`;
-
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: `Prompt: ${prompt}`,
-    config: {
-      systemInstruction: systemPrompt,
-      temperature: 0.1, // Low temperature for deterministic classification
-    }
-  });
-
-  const label = response.text?.trim().toUpperCase() || 'INVALID';
-  const validLabels = [
-    'WEDDING', 'BIRTHDAY', 'HALDI', 'MEHNDI', 'BABY_SHOWER', 
-    'ENGAGEMENT', 'ANNIVERSARY', 'CORPORATE_EVENT', 'DECORATION'
-  ];
-  
-  return validLabels.includes(label) ? label : 'INVALID';
-}
-
-/**
- * Layer 3: Prompt Enhancement
+ * Layer 2: Prompt Enhancement
  * Expands the prompt based on the identified category to improve image quality.
  */
 export function enhancePrompt(prompt: string, category: string): string {

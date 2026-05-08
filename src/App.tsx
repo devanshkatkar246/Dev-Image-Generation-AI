@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { GoogleGenAI } from '@google/genai';
 import { Loader2, Image as ImageIcon, Sparkles, Download, RefreshCw, Upload, X, CheckCircle2, Edit3, Crop, Send, Menu } from 'lucide-react';
-import { keywordCheck, aiValidatePrompt, enhancePrompt, checkRateLimit } from './services/pipeline';
+import { keywordCheck, enhancePrompt, checkRateLimit } from './services/pipeline';
 import PromptEditor from './components/PromptEditor';
+import { generateImage } from './api/generateImage';
 import { useChatHistory } from './hooks/useChatHistory';
 import Sidebar from './components/Sidebar';
 import ChatMessageItem from './components/ChatMessageItem';
@@ -45,11 +45,42 @@ export default function App() {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [loadingStep, setLoadingStep] = useState<string>('');
-  const [aspectRatio, setAspectRatio] = useState<string>('1:1');
+  const [uploadedImage, setUploadedImage] = useState<{data: string, mimeType: string} | null>(null);
   const [isEditingImage, setIsEditingImage] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [uploadedImage, setUploadedImage] = useState<{data: string, mimeType: string} | null>(null);
+  const [usage, setUsage] = useState({ remaining: 20, resetInSeconds: 3600 });
+  
+  const fetchUsage = async () => {
+    try {
+      const response = await fetch("http://localhost:3000/usage");
+      if (response.ok) {
+        const data = await response.json();
+        setUsage(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch usage", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsage();
+    // Refresh usage info every 30 seconds
+    const interval = setInterval(fetchUsage, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (usage.resetInSeconds > 0) {
+      const timer = setInterval(() => {
+        setUsage(prev => ({
+          ...prev,
+          resetInSeconds: Math.max(0, prev.resetInSeconds - 1)
+        }));
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [usage.resetInSeconds]);
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
@@ -123,21 +154,12 @@ export default function App() {
       console.log("[Pipeline] Checking rate limits...");
       checkRateLimit();
 
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      
       setLoadingStep('Analyzing prompt...');
       console.log("[Pipeline] Starting for prompt:", finalPrompt);
       
       let category = "DECORATION";
-      if (keywordCheck(finalPrompt)) {
-        console.log("[Pipeline] Keyword match found. Proceeding to enhancement.");
-      } else {
-        setLoadingStep('Validating decoration context...');
-        category = await aiValidatePrompt(finalPrompt, ai);
-      }
-
-      if (category === "INVALID") {
-        throw new Error("Please enter a prompt related to event decorations.");
+      if (!keywordCheck(finalPrompt)) {
+        // We could add more logic here if needed, but for now we follow the user request to remove Gemini
       }
 
       setLoadingStep('Enhancing prompt for best results...');
@@ -145,48 +167,10 @@ export default function App() {
 
       setLoadingStep('Generating your decoration concept...');
       
-      const parts: any[] = [];
-      if (uploadedImage) {
-        parts.push({
-          inlineData: {
-            data: uploadedImage.data,
-            mimeType: uploadedImage.mimeType,
-          }
-        });
-      }
-      parts.push({ text: enhancedPrompt });
+      const imageUrl = await generateImage(enhancedPrompt);
       
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: { parts: parts },
-        config: {
-          imageConfig: {
-            aspectRatio: aspectRatio as any,
-          }
-        }
-      });
-      
-      console.log("[Pipeline] Response:", JSON.stringify(response, null, 2));
-      
-      if (response.promptFeedback?.blockReason) {
-        throw new Error(`Prompt blocked: ${response.promptFeedback.blockReason}`);
-      }
-      
-      const candidate = response.candidates?.[0];
-      if (candidate?.finishReason && candidate.finishReason !== 'STOP') {
-        throw new Error(`Generation stopped: ${candidate.finishReason}`);
-      }
-
-      let imageUrl = null;
-      let textResponse = null;
-      for (const part of response.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) {
-          imageUrl = `data:image/png;base64,${part.inlineData.data}`;
-          break;
-        } else if (part.text) {
-          textResponse = part.text;
-        }
-      }
+      // Update usage after successful generation
+      fetchUsage();
       
       if (imageUrl) {
         setChats(prev => prev.map(c => {
@@ -198,17 +182,19 @@ export default function App() {
               lastMsg.originalImage = imageUrl;
               lastMsg.prompt_used = enhancedPrompt;
               lastMsg.content = undefined;
-              lastMsg.aspectRatio = aspectRatio;
+              lastMsg.aspectRatio = '1:1';
             }
             return { ...c, messages: msgs };
           }
           return c;
         }));
       } else {
-        throw new Error(textResponse || 'Failed to generate image. Please try again.');
+        throw new Error('Failed to generate image. Please try again.');
       }
     } catch (err: any) {
       console.error("[Pipeline Error]", err);
+      // Update usage even on error (just in case they hit limits)
+      fetchUsage();
       setError(err.message || 'An error occurred while generating the image.');
       setChats(prev => prev.map(c => {
         if (c.id === chatId) {
@@ -226,22 +212,6 @@ export default function App() {
       setIsGenerating(false);
       setLoadingStep('');
       setUploadedImage(null);
-    }
-  };
-
-  const handleAspectRatioChange = async (messageId: string, ratioValue: number, ratioLabel: string) => {
-    if (!currentChat) return;
-    const message = currentChat.messages.find(m => m.id === messageId);
-    if (!message || !message.originalImage) return;
-    
-    try {
-      const cropped = await cropImage(message.originalImage, ratioValue);
-      updateMessage(currentChat.id, messageId, {
-        image: cropped,
-        aspectRatio: ratioLabel
-      });
-    } catch (err) {
-      console.error("Failed to crop image", err);
     }
   };
 
@@ -275,29 +245,8 @@ export default function App() {
     });
 
     try {
-      const imageBase64 = message.image.split(',')[1];
-      
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: [{
-          parts: [
-            { inlineData: { data: imageBase64, mimeType: 'image/png' } },
-            { text: instruction }
-          ]
-        }]
-      });
-
-      let imageUrl = null;
-      let textResponse = null;
-      for (const part of response.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) {
-          imageUrl = `data:image/png;base64,${part.inlineData.data}`;
-          break;
-        } else if (part.text) {
-          textResponse = part.text;
-        }
-      }
+      // Convert instruction into a generation command with the new API
+      const imageUrl = await generateImage(instruction);
 
       if (imageUrl) {
         setChats(prev => prev.map(c => {
@@ -316,7 +265,7 @@ export default function App() {
           return c;
         }));
       } else {
-        throw new Error(textResponse || 'Failed to edit image. Please try again.');
+        throw new Error('Failed to edit image. Please try again.');
       }
     } catch (err: any) {
       console.error("[Edit Error]", err);
@@ -386,6 +335,19 @@ export default function App() {
             </div>
             <h1 className="text-xl font-semibold tracking-tight text-white">EventDhara AI</h1>
           </div>
+
+          <div className="flex items-center gap-6">
+            <div className="hidden sm:flex flex-col items-end">
+              <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold">Free Tier Remaining</span>
+              <span className="text-sm font-semibold text-amber-500">{usage.remaining} / 20 images</span>
+            </div>
+            <div className="flex flex-col items-end min-w-[100px]">
+              <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold">Resets in</span>
+              <span className="text-sm font-mono text-zinc-300">
+                {Math.floor(usage.resetInSeconds / 60)}m {usage.resetInSeconds % 60}s
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Chat Area */}
@@ -410,7 +372,6 @@ export default function App() {
                   message={msg} 
                   onEditImage={openEditor}
                   onRegenerate={(p) => handleGenerate(p)}
-                  onAspectRatioChange={handleAspectRatioChange}
                   isGenerating={isGenerating}
                 />
               ))

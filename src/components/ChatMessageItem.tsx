@@ -6,7 +6,6 @@ interface ChatMessageItemProps {
   message: ChatMessage;
   onEditImage: (messageId: string) => void;
   onRegenerate: (prompt: string) => void;
-  onAspectRatioChange: (messageId: string, ratioValue: number, ratioLabel: string) => void;
   isGenerating?: boolean;
 }
 
@@ -14,7 +13,6 @@ const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   message, 
   onEditImage, 
   onRegenerate, 
-  onAspectRatioChange,
   isGenerating 
 }) => {
   const [showRatioSelector, setShowRatioSelector] = useState(false);
@@ -59,8 +57,7 @@ const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
         ) : message.image ? (
           <div className="flex flex-col gap-3">
             <div 
-              className="w-full bg-zinc-950/50 rounded-xl border border-zinc-800/50 flex items-center justify-center overflow-hidden relative group transition-all duration-500"
-              style={{ aspectRatio: (message.aspectRatio || '1:1').replace(':', '/') }}
+              className="w-full max-w-[512px] aspect-square bg-zinc-950/50 rounded-xl border border-zinc-800/50 flex items-center justify-center overflow-hidden relative group transition-all duration-500"
             >
               <img 
                 src={message.image} 
@@ -70,38 +67,6 @@ const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
               />
               
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-end p-4 gap-2">
-                <div className="relative">
-                  <button 
-                    onClick={() => setShowRatioSelector(!showRatioSelector)}
-                    disabled={isGenerating}
-                    className="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white p-2.5 rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Crop className="w-4 h-4" />
-                    <span className="text-xs font-medium hidden sm:inline">{message.aspectRatio || '1:1'}</span>
-                  </button>
-                  {showRatioSelector && (
-                    <div className="absolute bottom-full right-0 mb-2 bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl overflow-hidden flex flex-col w-32 z-20">
-                      {[
-                        { label: '1:1', value: 1 },
-                        { label: '16:9', value: 16/9 },
-                        { label: '9:16', value: 9/16 },
-                        { label: '4:3', value: 4/3 },
-                        { label: '3:4', value: 3/4 },
-                      ].map((ratio) => (
-                        <button
-                          key={ratio.label}
-                          onClick={() => {
-                            onAspectRatioChange(message.id, ratio.value, ratio.label);
-                            setShowRatioSelector(false);
-                          }}
-                          className={`px-4 py-2 text-sm text-left hover:bg-zinc-800 transition-colors ${(message.aspectRatio || '1:1') === ratio.label ? 'text-amber-500 font-medium bg-zinc-800/50' : 'text-zinc-300'}`}
-                        >
-                          {ratio.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
                 <button 
                   onClick={() => onEditImage(message.id)} // Will trigger prompt editor
                   disabled={isGenerating}
